@@ -1,67 +1,41 @@
-var map = L.map('map', {
-    center: [48.0196, 66.9237],
-    zoom: 5,
-    scrollWheelZoom: false
-});
+// Инициализация карты
+var map = L.map('map').setView([48.0196, 66.9237], 5);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.carto.com/">CARTO</a>'
+// Добавление слоя карты (OpenStreetMap)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-var markers = L.markerClusterGroup();  // Группируем маркеры
-
-var schoolIcons = {
-    "строится": L.icon({
-        iconUrl: "https://cdn-icons-png.flaticon.com/512/3063/3063545.png", 
-        iconSize: [20, 20]
-    }),
-    "достроена": L.icon({
-        iconUrl: "https://cdn-icons-png.flaticon.com/512/1048/1048953.png", 
-        iconSize: [20, 20]
-    })
-};
-
-var schoolData = { "type": "FeatureCollection", "features": [] };
-
-function updateMap(year) {
-    markers.clearLayers();  // Убираем старые маркеры
-
-    schoolData.features.forEach(feature => {
-        var startYear = parseInt(feature.properties.date);
-        var completionYear = parseInt(feature.properties.completed);
-        var latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
-
-        if (year < startYear) {
-            return;  // ❌ Не показываем школу, если её строительство ещё не началось
-        }
-
-        if (year >= completionYear) {
-            feature.properties.status = "достроена";
-            feature.properties.description = "Школа сдана в " + completionYear + " году.";
-        } else {
-            feature.properties.status = "строится";
-            feature.properties.description = "Строительство началось в " + startYear + ", завершится в " + completionYear + ".";
-        }
-
-        var icon = schoolIcons[feature.properties.status];
-        var marker = L.marker(latlng, { icon: icon })
-            .bindPopup("<b>" + feature.properties.name + "</b><br>" + feature.properties.description);
-
-        markers.addLayer(marker);
-    });
-
-    map.addLayer(markers);
-}
-
-var slider = document.getElementById("timeline-slider");
-slider.addEventListener("input", function() {
-    updateMap(this.value);
-});
-
+// Загрузка данных о школах
 fetch('schools.json')
     .then(response => response.json())
     .then(data => {
-        schoolData.features = data;
-        updateMap(slider.value);
+        var markers = L.markerClusterGroup({
+            maxClusterRadius: 30, // Уменьшаем радиус кластеров
+            disableClusteringAtZoom: 10 // Показываем школы отдельно при увеличении
+        });
+
+        data.forEach(school => {
+            var schoolIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/1048/1048953.png', // Компактная иконка
+                iconSize: [20, 20]
+            });
+
+            var marker = L.marker([school.lat, school.lng], { icon: schoolIcon })
+                .bindPopup(`<b>${school.name}</b><br>Год постройки: ${school.year}`);
+
+            markers.addLayer(marker);
+        });
+
+        map.addLayer(markers);
+
+        // Динамическое отключение кластеров при увеличении зума
+        map.on('zoomend', function () {
+            if (map.getZoom() > 8) {
+                markers.options.disableClusteringAtZoom = 8;
+            } else {
+                markers.options.disableClusteringAtZoom = 10;
+            }
+        });
     })
     .catch(error => console.error('Ошибка загрузки данных:', error));
