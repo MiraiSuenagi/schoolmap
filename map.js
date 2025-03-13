@@ -8,53 +8,49 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.carto.com/">CARTO</a>'
 }).addTo(map);
 
-var schoolData = { "type": "FeatureCollection", "features": [] };
+var markers = L.markerClusterGroup();  // Группируем маркеры
 
 var schoolIcons = {
     "строится": L.icon({
-        iconUrl: "free-animated-icon-under-construction-15700517.gif",  // Гифка в той же папке
-        iconSize: [30, 30]
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/3063/3063545.png", 
+        iconSize: [20, 20]
     }),
     "достроена": L.icon({
-        iconUrl: "free-animated-icon-school-17490052.gif",
-        iconSize: [30, 30]
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/1048/1048953.png", 
+        iconSize: [20, 20]
     })
 };
 
-var addedMarkers = {}; 
+var schoolData = { "type": "FeatureCollection", "features": [] };
 
 function updateMap(year) {
+    markers.clearLayers();  // Убираем старые маркеры
+
     schoolData.features.forEach(feature => {
-        var latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
-        var schoolYear = parseInt(feature.properties.date);
+        var startYear = parseInt(feature.properties.date);
         var completionYear = parseInt(feature.properties.completed);
+        var latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+
+        if (year < startYear) {
+            return;  // ❌ Не показываем школу, если её строительство ещё не началось
+        }
 
         if (year >= completionYear) {
             feature.properties.status = "достроена";
             feature.properties.description = "Школа сдана в " + completionYear + " году.";
         } else {
             feature.properties.status = "строится";
+            feature.properties.description = "Строительство началось в " + startYear + ", завершится в " + completionYear + ".";
         }
 
         var icon = schoolIcons[feature.properties.status];
+        var marker = L.marker(latlng, { icon: icon })
+            .bindPopup("<b>" + feature.properties.name + "</b><br>" + feature.properties.description);
 
-        if (!addedMarkers[feature.properties.name]) {
-            var marker = L.marker(latlng, { icon: icon })
-                .bindPopup("<b>" + feature.properties.name + "</b><br>" + feature.properties.description);
-            
-            addedMarkers[feature.properties.name] = marker;
-            marker.addTo(map);
-        } else {
-            addedMarkers[feature.properties.name].setIcon(icon);
-            addedMarkers[feature.properties.name].setPopupContent("<b>" + feature.properties.name + "</b><br>" + feature.properties.description);
-        }
-
-        if (schoolYear <= year) {
-            addedMarkers[feature.properties.name].setOpacity(1);
-        } else {
-            addedMarkers[feature.properties.name].setOpacity(0);
-        }
+        markers.addLayer(marker);
     });
+
+    map.addLayer(markers);
 }
 
 var slider = document.getElementById("timeline-slider");
