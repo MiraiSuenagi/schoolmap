@@ -12,11 +12,11 @@ var schoolData = { "type": "FeatureCollection", "features": [] };
 
 var schoolIcons = {
     "строится": L.icon({
-        iconUrl: "under-construction.gif",  // Гифка в той же папке
+        iconUrl: "free-animated-icon-under-construction-15700517.gif",  // Гифка в той же папке
         iconSize: [30, 30]
     }),
     "достроена": L.icon({
-        iconUrl: "school.gif",
+        iconUrl: "free-animated-icon-school-17490052.gif",
         iconSize: [30, 30]
     })
 };
